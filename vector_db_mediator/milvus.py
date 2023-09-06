@@ -1,11 +1,13 @@
 from pymilvus import Collection as MilvusCollection
 from pymilvus import CollectionSchema, FieldSchema, DataType
 from llm_mediator.llm import LLM
+from llm_mediator.embedding import Embedding
+from llm_mediator.gpt import GPT
 
-DEFAULT_INDEX_PARAMS={"metric_type":"IP","index_type":"IVF_FLAT","params":{"nlist":1024}}
-DEFAULT_SEARCH_PARAMS={"metric_type": "IP", "params": {"nprobe": 10}}
-# DEFAULT_INDEX_PARAMS = {'index_type': 'IVF_FLAT','metric_type': 'L2','params': {'nlist': 1024}}
-# DEFAULT_SEARCH_PARAMS={"metric_type": "L2"}
+DEFAULT_LOCAL_EMBEDDING_INDEX_PARAMS={"metric_type":"IP","index_type":"IVF_FLAT","params":{"nlist":1024}}
+DEFAULT_LOCAL_EMBEDDING_SEARCH_PARAMS={"metric_type": "IP", "params": {"nprobe": 10}}
+DEFAULT_GPT_EMBEDDING_INDEX_PARAMS = {'index_type': 'IVF_FLAT','metric_type': 'L2','params': {'nlist': 1024}}
+DEFAULT_GPT_EMBEDDING_SEARCH_PARAMS={"metric_type": "L2"}
 
 class FieldSchemaHelper(FieldSchema):
     def __init__(self,model:LLM,name,dtype,description: str = "",**kwargs):
@@ -17,7 +19,13 @@ class FieldSchemaHelper(FieldSchema):
     pass
 
 class MilvusMediator:
-    def __init__(self,db_name,alias,index_params = DEFAULT_INDEX_PARAMS):
+    def __init__(self,db_name,alias,index_params = DEFAULT_LOCAL_EMBEDDING_INDEX_PARAMS,llm_type=None):
+        self.llm_type = llm_type
+        if llm_type is not None:
+            if llm_type == Embedding:
+                index_params = DEFAULT_LOCAL_EMBEDDING_INDEX_PARAMS
+            elif llm_type == GPT:
+                index_params = DEFAULT_GPT_EMBEDDING_INDEX_PARAMS
         self.db_name = db_name
         self.alias = alias
         self.index_params = index_params
@@ -62,7 +70,12 @@ class MilvusMediator:
         return collection
     def insert(self,data:list|dict):
         self.current_collection.insert(data)
-    def search(self,limit=1,anns_field="embedding",param=DEFAULT_SEARCH_PARAMS,**kwargs):
+    def search(self,limit=1,anns_field="embedding",param=DEFAULT_LOCAL_EMBEDDING_SEARCH_PARAMS,**kwargs):
+        if self.llm_type is not None:
+            if self.llm_type == Embedding:
+                param = DEFAULT_LOCAL_EMBEDDING_SEARCH_PARAMS
+            elif self.llm_type == GPT:
+                param = DEFAULT_GPT_EMBEDDING_SEARCH_PARAMS
         kwargs["param"] = param
         kwargs["limit"] = limit
         kwargs["anns_field"] = anns_field
