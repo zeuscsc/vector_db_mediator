@@ -17,6 +17,8 @@ with open('requirements.txt') as f:
     required_packages = f.readlines()
     required_packages = [pkg.strip() for pkg in required_packages]
 
+required_packages.append("git+https://github.com/zeuscsc/llm_mediator.git")
+
 EXTRAS = {
 }
 
