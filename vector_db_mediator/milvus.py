@@ -1,5 +1,5 @@
 from pymilvus import Collection as MilvusCollection
-from pymilvus import CollectionSchema, FieldSchema, DataType
+from pymilvus import CollectionSchema, FieldSchema, DataType,SearchResult
 from llm_mediator.llm import LLM
 from llm_mediator.embedding import Embedding
 from llm_mediator.gpt import GPT
@@ -19,7 +19,15 @@ class FieldSchemaHelper(FieldSchema):
     pass
 
 class MilvusMediator:
-    def __init__(self,db_name,alias,index_params = DEFAULT_LOCAL_EMBEDDING_INDEX_PARAMS,llm_type=None):
+    class SearchResultsHelper(SearchResult):
+        def to_list(self):
+            results=[]
+            for query_result in self:
+                for hit in query_result:
+                    results.append(hit.to_dict())
+            return results
+        pass
+    def __init__(self,db_name,alias,index_params = DEFAULT_LOCAL_EMBEDDING_INDEX_PARAMS,llm_type=Embedding):
         self.llm_type = llm_type
         if llm_type is not None:
             if llm_type == Embedding:
@@ -50,10 +58,11 @@ class MilvusMediator:
         self.current_collection = self.collections[collection_name]
         self.current_collection.load()
     def connect_to_milvus_collection(self,collection_name)->MilvusCollection:
-        self.current_collection_name = collection_name
         self.collections[collection_name]= MilvusCollection(collection_name,using=self.alias)
-        self.current_collection = self.collections[collection_name]
-        self.collections[collection_name].load()
+        self.switch_collection(collection_name)
+    def has_collection(self,collection_name):
+        from pymilvus import utility
+        return utility.has_collection(collection_name,using=self.alias)
     def initialize_schema(self,collection_name,fields:list[FieldSchema])->MilvusCollection:
         self.current_collection_name = collection_name
         from pymilvus import utility
@@ -70,14 +79,21 @@ class MilvusMediator:
         return collection
     def insert(self,data:list|dict):
         self.current_collection.insert(data)
-    def search(self,limit=1,anns_field="embedding",param=DEFAULT_LOCAL_EMBEDDING_SEARCH_PARAMS,**kwargs):
+    def search(self,text:str=None,limit:int=1,anns_field:str="embedding",param:str=None,**kwargs):
         if self.llm_type is not None:
             if self.llm_type == Embedding:
                 param = DEFAULT_LOCAL_EMBEDDING_SEARCH_PARAMS
             elif self.llm_type == GPT:
                 param = DEFAULT_GPT_EMBEDDING_SEARCH_PARAMS
+        if param is None:
+            raise Exception("Search param is None")
+        if text is not None:
+            if isinstance(text,str):
+                kwargs["data"] = [LLM(self.llm_type).get_embeddings(text)]
+            elif isinstance(text,list):
+                kwargs["data"] = LLM(self.llm_type).get_embeddings(text)
         kwargs["param"] = param
         kwargs["limit"] = limit
         kwargs["anns_field"] = anns_field
-        return self.current_collection.search(**kwargs)
+        return MilvusMediator.SearchResultsHelper(self.current_collection.search(**kwargs))
     pass

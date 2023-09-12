@@ -11,7 +11,7 @@ URL = 'https://github.com/zeuscsc/vector_db_mediator.git'
 EMAIL = 'zeuscsc@gmail.com'
 AUTHOR = 'Zeus Chiu'
 REQUIRES_PYTHON = '>=3.9.0'
-VERSION = '0.1.1'
+VERSION = '0.1.2'
 
 with open('requirements.txt') as f:
     required_packages = f.readlines()
