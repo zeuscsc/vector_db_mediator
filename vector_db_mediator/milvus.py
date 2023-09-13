@@ -40,6 +40,7 @@ class MilvusMediator:
         self.collections:dict[str,MilvusCollection]=dict()
         self.current_collection:MilvusCollection=None
         self.connect_to_milvusdb()
+        self.embedor = LLM(llm_type)
     
     def connect_to_milvusdb(self):
         from pymilvus import connections
@@ -89,9 +90,9 @@ class MilvusMediator:
             raise Exception("Search param is None")
         if text is not None:
             if isinstance(text,str):
-                kwargs["data"] = [LLM(self.llm_type).get_embeddings(text)]
+                kwargs["data"] = [self.embedor.get_embeddings(text)]
             elif isinstance(text,list):
-                kwargs["data"] = LLM(self.llm_type).get_embeddings(text)
+                kwargs["data"] = self.embedor.get_embeddings(text)
         kwargs["param"] = param
         kwargs["limit"] = limit
         kwargs["anns_field"] = anns_field
