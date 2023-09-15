@@ -1,2 +1,2 @@
 pymilvus
-git+https://github.com/zeuscsc/llm_mediator.git
+llm_mediator
